@@ -38,6 +38,12 @@ impl Expression {
     }
 }
 
+impl From<Expression> for R<Expression> {
+    fn from(e: Expression) -> Self {
+        R::new(e)
+    }
+}
+
 type Context<A> = HashMap<String, A>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,13 +56,6 @@ enum Value {
         Native(fn(R<Value>) -> R<Value>)
 }
 
-impl From<Expression> for R<Expression> {
-    fn from(e: Expression) -> Self {
-        R {
-            value: Rc::new(Box::new(e))
-        }
-    }
-}
 
 impl Deref for R<Value> {
     type Target = Value;
@@ -166,10 +165,16 @@ fn initial_context<'a>() -> Context<R<Value>> {
     use Expression::{Abstraction, Application, Variable};
     let f = Abstraction { 
         param: str("f"), 
-        body: R::new(Application { func: R::new(Variable(str("f"))), argument: R::new(Application { func: R::new(Variable(str("print_hello_world"))), argument: R::new(Variable(str("f")))}) })
+        body: Application { 
+            func: Variable(str("f")).into(),
+            argument: Application { 
+                func: Variable(str("print_hello_world")).into(),
+                argument: Variable(str("f")).into()
+            }.into() 
+        }.into()
     };
 
-    let code = Application { func: R::new(f.clone()), argument: R::new(f.clone()) };
-    let _x  = interpret(initial_context(), R::new(code));
+    let code = Application { func: f.clone().into(), argument: f.clone().into() };
+    let _x  = interpret(initial_context(), code.into());
 }
  
